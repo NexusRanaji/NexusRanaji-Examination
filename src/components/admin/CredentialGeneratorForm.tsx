@@ -52,7 +52,8 @@ export const CredentialGeneratorForm: React.FC<CredentialGeneratorFormProps> = (
     () => divisions.find((d) => d.classId === (classes[0]?.id || ''))?.id || ''
   );
   const [rollNo, setRollNo] = useState('');
-  const [parentId, setParentId] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
 
   // Staff-specific
   const [employeeId, setEmployeeId] = useState('');
@@ -83,8 +84,9 @@ export const CredentialGeneratorForm: React.FC<CredentialGeneratorFormProps> = (
     setDivisionId(firstDiv?.id || '');
   }, [classId, divisions]);
 
-  // Deduplicate existing parents list
-  const uniqueParents = Array.from(new Map(existingParents.map((p) => [p.id, p])).values());
+  // Deduplicate existing parents list (kept for prop compatibility — not used for display)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _uniqueParents = Array.from(new Map(existingParents.map((p) => [p.id, p])).values());
 
   const generateAutoCredentials = () => {
     if (!name.trim()) return;
@@ -154,7 +156,8 @@ export const CredentialGeneratorForm: React.FC<CredentialGeneratorFormProps> = (
         payload.classId = classId;
         payload.divisionId = divisionId || (classDivisions[0]?.id || '');
         payload.rollNo = rollNo || `NRES-${Math.floor(100 + Math.random() * 900)}`;
-        payload.parentId = parentId;
+        payload.parentName = parentName.trim();
+        payload.parentPhone = parentPhone.trim();
       } else if (role === 'teacher' || role === 'superadmin') {
         payload.employeeId = employeeId || `NRES-${role === 'superadmin' ? 'ADM' : 'FAC'}-${Math.floor(100 + Math.random() * 900)}`;
       }
@@ -193,6 +196,8 @@ export const CredentialGeneratorForm: React.FC<CredentialGeneratorFormProps> = (
       setEmail('');
       setUsername('');
       setPassword('');
+      setParentName('');
+      setParentPhone('');
       setRollNo('');
       setEmployeeId('');
     } catch (err: any) {
@@ -449,20 +454,31 @@ export const CredentialGeneratorForm: React.FC<CredentialGeneratorFormProps> = (
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Link to Parent / Guardian Account
-                </label>
-                <select
-                  value={parentId}
-                  onChange={(e) => setParentId(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none"
-                >
-                  <option value="">Select Existing Parent (or link later)</option>
-                  {uniqueParents.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.phone || p.email})</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Parent / Guardian Name
+                  </label>
+                  <input
+                    type="text"
+                    value={parentName}
+                    onChange={(e) => setParentName(e.target.value)}
+                    placeholder="e.g. Mr. Rajesh Sharma"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Parent Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    placeholder="e.g. 9820111000"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none"
+                  />
+                </div>
               </div>
             </div>
           )}

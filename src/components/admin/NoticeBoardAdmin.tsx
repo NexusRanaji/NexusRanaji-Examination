@@ -74,14 +74,22 @@ export const NoticeBoardAdmin: React.FC<NoticeBoardAdminProps> = ({ currentUserN
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Delete notice "${title}"? This cannot be undone.`)) return;
     try {
       const res = await apiClient.delete(`/api/notices/${id}`);
       if (res.ok) {
-        setNotices((prev) => prev.filter((n) => n.id !== id));
+        await fetchNotices();
+        setMessage('Notice deleted successfully.');
+        setTimeout(() => setMessage(null), 4000);
+      } else {
+        setMessage(res.data?.error || 'Failed to delete notice. Please try again.');
+        setTimeout(() => setMessage(null), 5000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete notice:', err);
+      setMessage(err.message || 'Network error while deleting notice.');
+      setTimeout(() => setMessage(null), 5000);
     }
   };
 
@@ -241,9 +249,10 @@ export const NoticeBoardAdmin: React.FC<NoticeBoardAdminProps> = ({ currentUserN
                   </div>
 
                   <button
-                    onClick={() => handleDelete(n.id)}
+                    onClick={() => handleDelete(n.id, n.title)}
                     title="Delete Notice"
-                    className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-600 p-1 transition-opacity"
+                    aria-label="Delete Notice"
+                    className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

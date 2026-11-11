@@ -90,6 +90,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       const res = await apiClient.post('/api/auth/login', {
         username: identifier.trim(),
         password,
+        expectedRole: selectedRole,
       });
 
       const data = res.data;

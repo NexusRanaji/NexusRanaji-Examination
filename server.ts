@@ -2968,6 +2968,30 @@ const handleLogin = (req: express.Request, res: express.Response) => {
     return res.status(401).json({ error: genericError });
   }
 
+  // Role-portal validation: if the caller specifies which portal they are logging into,
+  // reject the attempt when the authenticated user belongs to a different role.
+  // Allowed values match the four portal roles used by the frontend.
+  const { expectedRole } = req.body || {};
+  const allowedPortalRoles = ['student', 'teacher', 'superadmin', 'parent'];
+  if (expectedRole && typeof expectedRole === 'string' && allowedPortalRoles.includes(expectedRole)) {
+    if (user.role !== expectedRole) {
+      recordFailedLoginAttempt(rateLimitKey);
+      loginAudits.unshift({
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        userId: user.id,
+        userName: user.name,
+        role: user.role,
+        identifier: lookup,
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent'] || 'Browser Client',
+        status: 'Failed',
+        failureReason: `Wrong portal: credentials belong to role "${user.role}", attempted "${expectedRole}"`,
+      });
+      return res.status(403).json({ error: 'Invalid credentials for this portal.' });
+    }
+  }
+
   clearLoginRateLimit(rateLimitKey);
 
   loginAudits.unshift({
@@ -3124,6 +3148,8 @@ app.post(['/api/admin/create-credential', '/api/auth/users', '/api/admin/credent
     divisionId,
     rollNo,
     parentId,
+    parentName,
+    parentPhone,
     employeeId,
     assignedSubjects,
   } = req.body;
@@ -3213,9 +3239,52 @@ app.post(['/api/admin/create-credential', '/api/auth/users', '/api/admin/credent
     newUser.classId = classId;
     newUser.divisionId = divisionId;
     newUser.rollNo = rollNo.trim();
-    newUser.parentId = parentId || undefined;
-    if (parentId) {
-      const p = users.find((u) => u.id === parentId);
+
+    // Parent linking: prefer parentId (existing), then parentName+parentPhone (find or create)
+    let resolvedParentId: string | undefined = parentId || undefined;
+    const pName = ((req.body.parentName || parentName || '') as string).trim();
+    const pPhone = ((req.body.parentPhone || parentPhone || '') as string).replace(/\D/g, '');
+
+    if (!resolvedParentId && pName && pPhone.length >= 7) {
+      // Try to find existing parent by normalised phone number (never create duplicates)
+      const existingParent = users.find(
+        (u) => u.role === 'parent' && u.phone && u.phone.replace(/\D/g, '').includes(pPhone)
+      );
+      if (existingParent) {
+        resolvedParentId = existingParent.id;
+      } else {
+        // Create a new parent account with minimal info
+        const cleanParentName = pName;
+        const parentBase = `parent.${cleanParentName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}`;
+        let parentUsername = parentBase;
+        let attempts = 0;
+        while (users.some((x) => x.username && x.username.toLowerCase() === parentUsername.toLowerCase()) && attempts < 15) {
+          parentUsername = `${parentBase}${Math.floor(100 + Math.random() * 900)}`;
+          attempts++;
+        }
+        const parentRawPass = generateSecureTemporaryPassword();
+        const parentHashed = bcrypt.hashSync(parentRawPass, 10);
+        const parentNewId = `usr-parent-${Date.now().toString().slice(-5)}`;
+        const newParent: any = {
+          id: parentNewId,
+          name: cleanParentName,
+          role: 'parent',
+          phone: req.body.parentPhone || parentPhone || pPhone,
+          username: parentUsername,
+          password: parentHashed,
+          rawPassword: parentRawPass,
+          mustChangePassword: false,
+          createdAt: new Date().toISOString(),
+          childrenIds: [],
+        };
+        users.push(newParent);
+        resolvedParentId = parentNewId;
+      }
+    }
+
+    newUser.parentId = resolvedParentId;
+    if (resolvedParentId) {
+      const p = users.find((u) => u.id === resolvedParentId);
       if (p) {
         p.childrenIds = p.childrenIds || [];
         if (!p.childrenIds.includes(newId)) p.childrenIds.push(newId);

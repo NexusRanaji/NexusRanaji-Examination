@@ -118,6 +118,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newDivRoom, setNewDivRoom] = useState('');
   const [newSubName, setNewSubName] = useState('');
   const [newSubCode, setNewSubCode] = useState('');
+  const [subjectPreset, setSubjectPreset] = useState('Mathematics');
+
+  const SUBJECT_PRESETS = [
+    'Mathematics', 'Science', 'English', 'Hindi', 'Social Studies',
+    'History', 'Geography', 'Physics', 'Chemistry', 'Biology',
+    'Computer Science', 'Physical Education', 'Sanskrit', 'Other / Custom',
+  ];
+
+  const SUBJECT_CODE_MAP: Record<string, string> = {
+    'Mathematics': 'MATH', 'Science': 'SCI', 'English': 'ENG', 'Hindi': 'HIN',
+    'Social Studies': 'SST', 'History': 'HIS', 'Geography': 'GEO',
+    'Physics': 'PHY', 'Chemistry': 'CHM', 'Biology': 'BIO',
+    'Computer Science': 'CS', 'Physical Education': 'PE', 'Sanskrit': 'SKT',
+  };
 
   // Teacher Assignment Form
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
@@ -291,6 +305,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } catch (err: any) {
       console.error('Failed to create subject:', err);
       setStatusMessage({ type: 'error', text: err?.message || 'Failed to create subject.' });
+    }
+  };
+
+  const handleDeleteClass = async (id: string, name: string) => {
+    if (!window.confirm(`Delete class "${name}"? If students or exams exist, it will be archived instead.`)) return;
+    try {
+      setStatusMessage(null);
+      const res = await apiClient.delete(`/api/admin/classes/${id}`);
+      if (res.ok) {
+        const msg = res.data?.archived
+          ? `"${name}" archived: ${res.data.message || 'Class has dependents and was archived.'}`
+          : `Class "${name}" deleted successfully.`;
+        setStatusMessage({ type: 'success', text: msg });
+        await fetchData();
+      } else {
+        setStatusMessage({ type: 'error', text: res.data?.error || `Failed to delete class "${name}".` });
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err?.message || 'Failed to delete class.' });
+    }
+  };
+
+  const handleDeleteDivision = async (id: string, name: string) => {
+    if (!window.confirm(`Delete division "${name}"? This cannot be undone.`)) return;
+    try {
+      setStatusMessage(null);
+      const res = await apiClient.delete(`/api/admin/divisions/${id}`);
+      if (res.ok) {
+        const msg = res.data?.archived
+          ? `Division "${name}" archived: ${res.data.message || 'Division has dependents.'}`
+          : `Division "${name}" deleted successfully.`;
+        setStatusMessage({ type: 'success', text: msg });
+        await fetchData();
+      } else {
+        setStatusMessage({ type: 'error', text: res.data?.error || `Failed to delete division "${name}".` });
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err?.message || 'Failed to delete division.' });
+    }
+  };
+
+  const handleDeleteSubject = async (id: string, name: string) => {
+    if (!window.confirm(`Delete subject "${name}"? This cannot be undone.`)) return;
+    try {
+      setStatusMessage(null);
+      const res = await apiClient.delete(`/api/admin/subjects/${id}`);
+      if (res.ok) {
+        const msg = res.data?.archived
+          ? `Subject "${name}" archived: ${res.data.message || 'Subject has dependents.'}`
+          : `Subject "${name}" deleted successfully.`;
+        setStatusMessage({ type: 'success', text: msg });
+        await fetchData();
+      } else {
+        setStatusMessage({ type: 'error', text: res.data?.error || `Failed to delete subject "${name}".` });
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err?.message || 'Failed to delete subject.' });
     }
   };
 
@@ -1773,14 +1844,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">e.g. Chemistry, Biology</p>
 
               <form onSubmit={handleAddSubject} className="space-y-3">
-                <input
-                  type="text"
-                  required
-                  placeholder="Subject Name (e.g. Organic Chemistry)"
-                  value={newSubName}
-                  onChange={(e) => setNewSubName(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
-                />
+                {/* Preset Subject Selector */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Select Subject
+                  </label>
+                  <select
+                    value={subjectPreset}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSubjectPreset(val);
+                      if (val !== 'Other / Custom') {
+                        setNewSubName(val);
+                        setNewSubCode(SUBJECT_CODE_MAP[val] || '');
+                      } else {
+                        setNewSubName('');
+                        setNewSubCode('');
+                      }
+                    }}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                  >
+                    {SUBJECT_PRESETS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                {subjectPreset === 'Other / Custom' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Subject Name (e.g. Organic Chemistry)"
+                    value={newSubName}
+                    onChange={(e) => setNewSubName(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                  />
+                )}
                 <input
                   type="text"
                   required
@@ -1922,9 +2020,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           Grade Level: {cls.level}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                        {classStudents.length} Students
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
+                          {classStudents.length} Students
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClass(cls.id, cls.name)}
+                          title={`Delete class ${cls.name}`}
+                          className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1936,9 +2044,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           {classDivs.map((d) => (
                             <span
                               key={d.id}
-                              className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-medium"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-medium"
                             >
                               {d.name} {d.roomNumber ? `• ${d.roomNumber}` : ''}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDivision(d.id, d.name)}
+                                title={`Delete division ${d.name}`}
+                                className="ml-0.5 text-emerald-600 hover:text-rose-500 transition-colors leading-none"
+                              >
+                                ×
+                              </button>
                             </span>
                           ))}
                         </div>
@@ -1963,9 +2079,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     key={s.id}
                     className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40"
                   >
-                    <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-500/10 inline-block mb-1">
-                      {s.code}
-                    </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-500/10 inline-block">
+                        {s.code}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSubject(s.id, s.name)}
+                        title={`Delete subject ${s.name}`}
+                        className="text-slate-400 hover:text-rose-500 p-0.5 rounded transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                     <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate" title={s.name}>
                       {s.name}
                     </p>

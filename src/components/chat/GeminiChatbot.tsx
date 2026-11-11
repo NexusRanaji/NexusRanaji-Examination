@@ -496,8 +496,8 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           id="gemini-chatbot-window"
           className={`fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col transition-all duration-200 ${
             isMaximized
-              ? 'inset-2 sm:inset-4 md:inset-8 rounded-2xl'
-              : 'bottom-0 inset-x-0 sm:inset-x-auto sm:bottom-6 sm:right-6 w-full sm:w-[480px] md:w-[540px] h-[88vh] sm:h-[640px] max-h-[92vh] rounded-t-3xl sm:rounded-2xl pb-safe sm:pb-0'
+              ? 'inset-0 rounded-none sm:inset-3 sm:rounded-2xl md:inset-6'
+              : 'bottom-0 inset-x-0 sm:inset-x-auto sm:bottom-6 sm:right-6 w-full sm:w-[480px] md:w-[540px] h-[88dvh] sm:h-[640px] max-h-[95dvh] rounded-t-3xl sm:rounded-2xl pb-safe sm:pb-0'
           }`}
         >
           {/* Mobile Sheet Handle */}
